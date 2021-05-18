@@ -40,30 +40,8 @@ object Main extends App {
 
     }
 
-    final class GameActor extends Actor {
-
-        private val roomActor: ActorRef = context.actorOf(Props[RoomActor](), "roomActor")
-        private val players: mutable.Queue[Player] = mutable.Queue[Player]()
-
-        override def receive: Receive = {
-            case plrs: mutable.Queue[Player] => players.addAll(plrs)
-        }
-
-        def blind() = {
-            roomActor
-        }
-
-    }
-
-    final class PlayerActor extends Actor {
-
-        override def receive: Receive = Actor.emptyBehavior
-
-    }
-
     final class RoomActor extends Actor {
 
-        private val gameActor: ActorRef = context.actorOf(Props[GameActor](), "gameActor")
         val playersToMakeBet: mutable.Queue[Player] = mutable.Queue()
         val playersMadeBet: mutable.Queue[Player] = mutable.Queue()
         private val board: Board = Board(null)
@@ -97,7 +75,7 @@ object Main extends App {
         }
 
         private def setHands(): Unit = {
-            playersToMakeBet.map(pl => pl.setHand(Hand(pack.dequeue(), pack.dequeue())))
+            playersToMakeBet.foreach(pl => pl.setHand(Hand(pack.dequeue(), pack.dequeue())))
         }
 
         private def makeSmallBlind(): Unit = {
@@ -122,9 +100,7 @@ object Main extends App {
                 playersToMakeBet += Player(Random.nextLong()).updateMoney(100)
                 println(self.path + " player added")
                 if (playersToMakeBet.size == 2) {
-                    gameActor ! playersToMakeBet
-                    gameActor ! "start"
-                    sender() ! "game started"
+                    //new actor
                 }
             }
         }
