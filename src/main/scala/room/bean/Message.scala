@@ -11,4 +11,5 @@ object Message{
   final case class mSetHands() extends Message
   final case class mPreFlop() extends Message
   final case class mMakeFlop() extends Message
+
 }
