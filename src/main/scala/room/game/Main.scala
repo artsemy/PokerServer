@@ -4,6 +4,7 @@ package room.game
 import room.bean._
 import room.bean.Suit._
 import room.bean.Rank._
+import room.bean.Message._
 
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import scala.util.Random
@@ -14,28 +15,26 @@ object Main extends App {
     final class ServerActor extends Actor {
 
         private val roomActor: ActorRef = context.actorOf(Props[RoomActor](), "roomActor")
-        private val playerActor: ActorRef = context.actorOf(Props[RoomActor](), "playerActor")
         private var flagFlop = true
 
-        TestCommands()
+
         override def receive: Receive = {
-            case "game started" => println("game started")
             case fl: Flop => println(fl)
-            case "show flop" => flagFlop = false
         }
 
+        TestCommands()
+
         def TestCommands(): Unit = {
-            roomActor ! "open"
-            roomActor ! "add player"
-            roomActor ! "add player"
+            roomActor ! mOpenRoom()
+            roomActor ! mAddPlayer()
+            roomActor ! mAddPlayer()
             //blind
-            roomActor ! "small blind"
-            roomActor ! "big blind"
-            roomActor ! "set hands"
+            roomActor ! mSmallBlind()
+            roomActor ! mBigBlind()
+            roomActor ! mSetHands()
             //preflop
-            roomActor ! "preflop" //fixxx
-            roomActor ! "flop"
-            while(flagFlop) {}
+            roomActor ! mPreFlop() //fixxx
+            roomActor ! mMakeFlop()
         }
 
     }
@@ -51,19 +50,18 @@ object Main extends App {
         private var bank: Int = 0
 
         override def receive: Receive = {
-            case "open" => println(self.path + " room opened")
-            case "add player" => addPlayer()
-            case "small blind" => makeSmallBlind()
-            case "big blind" => makeBigBlined()
-            case "set hands" => setHands()
-            case "preflop" => makePreFlop()
-            case "flop" => makeFlop()
+            case m: mOpenRoom => println(self.path + " room opened")
+            case m: mAddPlayer => addPlayer()
+            case m: mSmallBlind => makeSmallBlind()
+            case m: mBigBlind => makeBigBlined()
+            case m: mSetHands => setHands()
+            case m: mPreFlop => makePreFlop()
+            case m: mMakeFlop => makeFlop()
         }
 
         private def makeFlop(): Unit = {
-            val flop: Flop = Flop(pack.dequeue(), pack.dequeue(), pack.dequeue())
-            sender() ! flop
-            sender() ! "show flop"
+            val flop = Flop(pack.dequeue(), pack.dequeue(), pack.dequeue())
+            sender ! flop
         }
 
         private def makePreFlop(): Unit = { // fixxx
@@ -97,11 +95,13 @@ object Main extends App {
 
         private def addPlayer(): Unit = {
             if (playersToMakeBet.size != 2) {
-                playersToMakeBet += Player(Random.nextLong()).updateMoney(100)
-                println(self.path + " player added")
-                if (playersToMakeBet.size == 2) {
-                    //new actor
-                }
+              val pl = Player(Random.nextLong())
+              pl.updateMoney(100)
+              playersToMakeBet.append(pl)
+              println(self.path + " player added")
+              if (playersToMakeBet.size == 2) {
+                  //new actor
+              }
             }
         }
 
