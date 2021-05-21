@@ -1,7 +1,9 @@
 package com.bootcamp
 package room.bean
 
-sealed abstract class Rank(weight: Int) {}
+sealed abstract class Rank(weight: Int) {
+  def getWeight: Int = weight
+}
 
 object Rank{
   final case class Two() extends Rank(2)

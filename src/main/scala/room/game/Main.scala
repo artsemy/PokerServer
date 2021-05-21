@@ -15,15 +15,12 @@ object Main extends App {
     final class ServerActor extends Actor {
 
         private val roomActor: ActorRef = context.actorOf(Props[RoomActor](), "roomActor")
-        private var flagFlop = true
-
 
         override def receive: Receive = {
             case fl: Flop => println(fl)
         }
 
         TestCommands()
-
         def TestCommands(): Unit = {
             roomActor ! mOpenRoom()
             roomActor ! mAddPlayer()
