@@ -5,6 +5,7 @@ case class Player(id: Long) {
 
   private var money: Int = 0
   private var hand: Hand = null
+  private var currentBet = 0
 
   def getMoney(): Int = {
     money
@@ -18,4 +19,9 @@ case class Player(id: Long) {
     this.hand = hand
   }
 
+  def getHand(): Hand = hand
+
+  def setCurrentBet(bet: Int) = { currentBet = bet }
+
+  def getCurrentBet() = currentBet
 }
