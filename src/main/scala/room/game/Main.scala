@@ -16,13 +16,13 @@ object Main extends App {
         private val serverActor: ActorRef = context.actorOf(Props[ServerActor](), "serverActor")
 
         override def receive: Receive = {
-            Actor.emptyBehavior // print result
+            Actor.emptyBehavior // add printing result
         }
 
         def TestCommands(): Unit = { //testing case
-            val player1: Player = Player(Random.nextLong())
-            val player2: Player = Player(Random.nextLong())
-            val player3: Player = Player(Random.nextLong())
+            val player1: Player = Player(1)
+            val player2: Player = Player(2)
+            val player3: Player = Player(3)
             player1.updateMoney(100)
             player2.updateMoney(100)
             player3.updateMoney(100)
@@ -34,19 +34,18 @@ object Main extends App {
             // blind -> dealingCards -> preFlop round
             serverActor ! mMakeBet(player3, 10)
             serverActor ! mMakeBet(player1, 5)
-            serverActor ! mMakeBet(player2, 0)
             // flop dealing -> flop round
-            serverActor ! mMakeBet(player1, 20)
             serverActor ! mMakeBet(player2, 20)
             serverActor ! mMakeBet(player3, 20)
+            serverActor ! mMakeBet(player1, 20)
             // turn dealing -> turn round
-            serverActor ! mMakeBet(player1, 10)
-            serverActor ! mMakeBet(player2, 10)
-            serverActor ! mMakeBet(player3, 10)
+            serverActor ! mMakeBet(player2, 0)
+            serverActor ! mMakeBet(player3, 0)
+            serverActor ! mMakeBet(player1, 0)
             // river dealing -> river round
-            serverActor ! mMakeBet(player1, 10)
             serverActor ! mMakeBet(player2, 10)
             serverActor ! mMakeBet(player3, 10)
+            serverActor ! mMakeBet(player1, 10)
         }
 
         TestCommands()
@@ -78,13 +77,14 @@ object Main extends App {
 
         private val playersActive: mutable.Queue[Player] = mutable.Queue() //next round players
         private val playersAll: mutable.Queue[Player] = mutable.Queue() //next game players
+        private val boardCards: mutable.Queue[Card] = mutable.Queue() //cards on board
         private val pack = createPack()
         private val smallBlindPrice = 5
         private val bigBlindPrice = 10
         private var bank: Int = 0
         private var roundBet: Int = 0
-        private var canCheck: Int = 0
         private var boardSize: Int = 0
+        private var playerButton: Player = null
 
         override def receive: Receive = {
             case m: mOpenRoom => init()
@@ -103,7 +103,20 @@ object Main extends App {
         private def afterFlopRound(pBet: Int): Unit = {
             if (pBet < 0) afterFlopRoundFold()
             if (pBet == 0) afterFlopRoundCheck()
-            if (pBet > 0) afterFlopRoundRise(pBet)
+            if (pBet > 0) {
+              if (pBet + playersActive(0).getCurrentBet() > roundBet) afterFlopRoundRise(pBet)
+              else afterFlopRoundCall(pBet)
+            }
+        }
+
+        private def afterFlopRoundCall(pBet: Int): Unit = {
+            val player = playersActive.dequeue()
+            player.updateMoney(-pBet)
+            player.setCurrentBet(roundBet)
+            bank += pBet
+            playersActive.append(player)
+            println("after flop call " + player) // log
+            tryEndRound()
         }
 
         private def afterFlopRoundRise(pBet: Int): Unit = {
@@ -113,23 +126,26 @@ object Main extends App {
             bank += pBet
             player.setCurrentBet(roundBet)
             playersActive.append(player)
-            canCheck = 0
+            println("after flop rise " + player) // log
         }
 
-        private def afterFlopRoundFold(): Unit = playersActive.dequeue()
+        private def afterFlopRoundFold(): Unit = {
+            val player = playersActive.dequeue()
+            println("after flop fold " + player) // log
+        }
 
         private def afterFlopRoundCheck(): Unit = {
             val player = playersActive.dequeue()
             playersActive.append(player)
-            canCheck += 1
-            if (canCheck == playersActive.length - 1) closeRound()
+            println("after flop check " + player) // log
+            if (player == playerButton) closeRound() //fix
         }
 
-        private def preFlopRound(pBet: Int): Unit = { //works only with correct input
+        private def preFlopRound(pBet: Int): Unit = {
             val player = playersActive(0)
             if (pBet < 0) preFlopRoundFold()
-            if (pBet + player.getCurrentBet() == roundBet) preFlopRoundCheck(pBet)
-            if (pBet + player.getCurrentBet() > roundBet) preFlopRoundRaise(pBet)
+            else if (pBet + player.getCurrentBet() == roundBet) preFlopRoundCall(pBet)
+                else if (pBet + player.getCurrentBet() > roundBet) preFlopRoundRaise(pBet)
         }
 
         private def preFlopRoundRaise(pBet: Int): Unit = {
@@ -139,47 +155,74 @@ object Main extends App {
             bank += pBet
             player.setCurrentBet(roundBet)
             playersActive.append(player)
+            println("pre flop rise " + player) // log
         }
 
-        private def preFlopRoundCheck(pBet: Int): Unit = {
-            if (pBet == 0) closeRound()
-            else { // small-blind
-                val player = playersActive.dequeue()
-                player.updateMoney(-pBet)
-                player.setCurrentBet(roundBet)
-                bank += pBet
-                playersActive.append(player)
+        private def preFlopRoundCall(pBet: Int): Unit = {
+            val player = playersActive.dequeue()
+            player.updateMoney(-pBet)
+            player.setCurrentBet(roundBet)
+            bank += pBet
+            playersActive.append(player)
+            println("pre flop call " + player) // log
+            tryEndRound()
+        }
+
+        private def tryEndRound(): Unit = {
+            var b: Boolean = true
+            for (player <- playersActive) {
+              b = b && (player.getCurrentBet() == roundBet)
             }
+            if (b) closeRound()
         }
 
         private def closeRound(): Unit = {
-            canCheck = 0
             roundBet = 0
             playersActive.foreach(pl => pl.setCurrentBet(0))
+            moveToPlayerFirstMove()
             if (boardSize == 0) makeFlop()
-            if (boardSize == 3) makeTurn()
-            if (boardSize == 4) makeRiver()
+            else if (boardSize == 3) makeTurn()
+                else if (boardSize == 4) makeRiver()
+                    else countResults()
+        }
+
+        private def countResults(): Unit = {
+            println("count results") // count results
+        }
+
+        private def moveToPlayerFirstMove(): Unit = {
+            while (playersActive(0) != playerButton) {
+                val pl = playersActive.dequeue()
+                playersActive.append(pl)
+            }
+            val pl = playersActive.dequeue()
+            playersActive.append(pl)
         }
 
         private def makeRiver(): Unit = {
-            val card = pack.dequeue()
-            boardSize = 5 //add "adding cards to board"
-            println(card)
+            boardCards.append(pack.dequeue())
+            boardSize = 5
+            println(boardCards) // log
         }
 
         private def makeTurn(): Unit = {
-            val card = pack.dequeue()
-            boardSize = 4 //add "adding cards to board"
-            println(card)
+            boardCards.append(pack.dequeue())
+            boardSize = 4
+            println(boardCards) // log
         }
 
         private def makeFlop(): Unit = {
-            val flop = Flop(pack.dequeue(), pack.dequeue(), pack.dequeue())
-            boardSize = 3 //add "adding cards to board"
-            println(flop) // log
+            boardSize = 3
+            boardCards.append(pack.dequeue())
+            boardCards.append(pack.dequeue())
+            boardCards.append(pack.dequeue())
+            println(boardCards) // log
         }
 
-        private def preFlopRoundFold(): Unit = playersActive.dequeue()
+        private def preFlopRoundFold(): Unit = {
+            val player = playersActive.dequeue()
+            println("pre flop fold " + player) // log
+        }
 
         private def setHands(): Unit = {
             playersActive.foreach(pl => pl.setHand(Hand(pack.dequeue(), pack.dequeue())))
@@ -210,6 +253,7 @@ object Main extends App {
         }
 
         private def addPlayer(player: Player): Unit = {
+            if (playersActive.isEmpty) playerButton = player
             playersActive.append(player)
             playersAll.append(player)
         }
