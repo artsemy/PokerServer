@@ -3,7 +3,6 @@ package room.bean
 
 sealed trait Combination {
   def weight: Int
-  def isCombination: Boolean
 }
 
 object Combination {
@@ -17,7 +16,6 @@ object Combination {
       res += fiveCard.w5 * 4096
       res
     }
-    override def isCombination: Boolean = true
   }
 
   final case class Pair(fiveCard: FiveCard) extends Combination {
@@ -50,14 +48,6 @@ object Combination {
       }
       c(index1) + c(index2)*9 + c(index3)*81 + c(index4)*911 + 64866
     }
-    override def isCombination: Boolean = {
-      var p = 0
-      if (fiveCard.w2 - fiveCard.w1 == 0) p += 1
-      if (fiveCard.w3 - fiveCard.w2 == 0) p += 1
-      if (fiveCard.w4 - fiveCard.w3 == 0) p += 1
-      if (fiveCard.w5 - fiveCard.w4 == 0) p += 1
-      p == 1
-    }
   }
 
   final case class TwoPairs(fiveCard: FiveCard) extends Combination {
@@ -83,14 +73,6 @@ object Combination {
         index3 = 3
       }
       c(index1) + c(index2)*13 + c(index3)*139 + 78792
-    }
-    override def isCombination: Boolean = {
-      var p = 0
-      if (fiveCard.w2 - fiveCard.w1 == 0) p += 1
-      if (fiveCard.w3 - fiveCard.w2 == 0) p += 1
-      if (fiveCard.w4 - fiveCard.w3 == 0) p += 1
-      if (fiveCard.w5 - fiveCard.w4 == 0) p += 1
-      p == 2
     }
   }
 
@@ -118,16 +100,6 @@ object Combination {
       }
       c(index1) + c(index2)*11 + c(index3)*133 + 80919
     }
-    override def isCombination: Boolean = {
-      var p = 0
-      if (fiveCard.w2 - fiveCard.w1 == 0 &&
-        fiveCard.w3 - fiveCard.w2 == 0) p = 1
-      if (fiveCard.w3 - fiveCard.w2 == 0 &&
-        fiveCard.w4 - fiveCard.w3 == 0) p = 1
-      if (fiveCard.w4 - fiveCard.w3 == 0 &&
-        fiveCard.w5 - fiveCard.w4 == 0) p = 1
-      p == 1
-    }
   }
 
   final case class Straight(fiveCard: FiveCard) extends Combination {
@@ -136,15 +108,6 @@ object Combination {
       if (fiveCard.w5 == 14 && fiveCard.w1 == 2) p = 5
       else p = fiveCard.w5
       p + 82936
-    }
-    override def isCombination: Boolean = {
-      var p = 0
-      if (fiveCard.w2 - fiveCard.w1 == 1) p += 1
-      if (fiveCard.w3 - fiveCard.w2 == 1) p += 1
-      if (fiveCard.w4 - fiveCard.w3 == 1) p += 1
-      if (fiveCard.w5 - fiveCard.w4 == 1 ||
-        fiveCard.w5 - fiveCard.w1 == 12) p += 1
-      p == 4
     }
   }
 
@@ -157,14 +120,6 @@ object Combination {
       res += fiveCard.w5 * 4096
       res + 82950
     }
-    override def isCombination: Boolean = {
-      var p = 0
-      if (fiveCard.s1 == fiveCard.s2) p += 1
-      if (fiveCard.s2 == fiveCard.s3) p += 1
-      if (fiveCard.s3 == fiveCard.s4) p += 1
-      if (fiveCard.s4 == fiveCard.s5) p += 1
-      p == 4
-    }
   }
 
   final case class FullHouse(fiveCard: FiveCard) extends Combination {
@@ -174,16 +129,6 @@ object Combination {
       if(fiveCard.w2 == fiveCard.w3) index1 = 3
       else index1 = 1
       c(index1) + c(2)*13 + 147816
-    }
-    override def isCombination: Boolean = {
-      var p = 0
-      if (fiveCard.w1 == fiveCard.w2 &&
-        fiveCard.w3 == fiveCard.w4 && 
-        fiveCard.w4 == fiveCard.w5) p += 1
-      if (fiveCard.w1 == fiveCard.w2 &&
-        fiveCard.w2 == fiveCard.w3 &&
-        fiveCard.w4 == fiveCard.w5) p += 1
-      p == 1
     }
   }
 
@@ -196,14 +141,6 @@ object Combination {
       else index1 = 0
       c(index1) + c(2)*13 + 148011
     }
-    override def isCombination: Boolean = {
-      var p = 0
-      if (fiveCard.w1 == fiveCard.w2 && fiveCard.w2 == fiveCard.w3 &&
-        fiveCard.w3 == fiveCard.w4) p += 1
-      if (fiveCard.w2 == fiveCard.w3 && fiveCard.w3 == fiveCard.w4 &&
-        fiveCard.w4 == fiveCard.w5) p += 1
-      p == 1
-    }
   }
 
   final case class StraightFlush(fiveCard: FiveCard) extends Combination {
@@ -213,20 +150,11 @@ object Combination {
       else p = fiveCard.w5
       p + 148206
     }
-    override def isCombination: Boolean = {
-      var p = 0
-      if (Straight(fiveCard).isCombination) p += 1
-      if (Flush(fiveCard).isCombination) p += 1
-      p == 2
-    }
   }
 
   final case class RoyalFlush(fiveCard: FiveCard) extends Combination {
     override def weight: Int = {
       1 + 148220
-    }
-    override def isCombination: Boolean = {
-      StraightFlush(fiveCard).isCombination && fiveCard.w4 == 13
     }
   }
 
@@ -237,5 +165,86 @@ object Combination {
   def getAllSuit(fiveCard: FiveCard): List[Suit] = {
     List(fiveCard.s1, fiveCard.s2,
       fiveCard.s3, fiveCard.s4, fiveCard.s5)
+  }
+
+  def isHighCard(fiveCard: FiveCard): Boolean = true
+
+  def isPair(fiveCard: FiveCard): Boolean = {
+    var p = 0
+    if (fiveCard.w2 - fiveCard.w1 == 0) p += 1
+    if (fiveCard.w3 - fiveCard.w2 == 0) p += 1
+    if (fiveCard.w4 - fiveCard.w3 == 0) p += 1
+    if (fiveCard.w5 - fiveCard.w4 == 0) p += 1
+    p == 1
+  }
+
+  def isTwoPairs(fiveCard: FiveCard): Boolean = {
+    var p = 0
+    if (fiveCard.w2 - fiveCard.w1 == 0) p += 1
+    if (fiveCard.w3 - fiveCard.w2 == 0) p += 1
+    if (fiveCard.w4 - fiveCard.w3 == 0) p += 1
+    if (fiveCard.w5 - fiveCard.w4 == 0) p += 1
+    p == 2
+  }
+
+  def isThreeOfaKind(fiveCard: FiveCard): Boolean = {
+    var p = 0
+    if (fiveCard.w2 - fiveCard.w1 == 0 &&
+      fiveCard.w3 - fiveCard.w2 == 0) p = 1
+    if (fiveCard.w3 - fiveCard.w2 == 0 &&
+      fiveCard.w4 - fiveCard.w3 == 0) p = 1
+    if (fiveCard.w4 - fiveCard.w3 == 0 &&
+      fiveCard.w5 - fiveCard.w4 == 0) p = 1
+    p == 1
+  }
+
+  def isStraight(fiveCard: FiveCard): Boolean = {
+    var p = 0
+    if (fiveCard.w2 - fiveCard.w1 == 1) p += 1
+    if (fiveCard.w3 - fiveCard.w2 == 1) p += 1
+    if (fiveCard.w4 - fiveCard.w3 == 1) p += 1
+    if (fiveCard.w5 - fiveCard.w4 == 1 ||
+      fiveCard.w5 - fiveCard.w1 == 12) p += 1
+    p == 4
+  }
+
+  def isFlush(fiveCard: FiveCard): Boolean = {
+    var p = 0
+    if (fiveCard.s1 == fiveCard.s2) p += 1
+    if (fiveCard.s2 == fiveCard.s3) p += 1
+    if (fiveCard.s3 == fiveCard.s4) p += 1
+    if (fiveCard.s4 == fiveCard.s5) p += 1
+    p == 4
+  }
+
+  def isFullHouse(fiveCard: FiveCard): Boolean = {
+    var p = 0
+    if (fiveCard.w1 == fiveCard.w2 &&
+      fiveCard.w3 == fiveCard.w4 &&
+      fiveCard.w4 == fiveCard.w5) p += 1
+    if (fiveCard.w1 == fiveCard.w2 &&
+      fiveCard.w2 == fiveCard.w3 &&
+      fiveCard.w4 == fiveCard.w5) p += 1
+    p == 1
+  }
+
+  def isFourOfaKind(fiveCard: FiveCard): Boolean = {
+    var p = 0
+    if (fiveCard.w1 == fiveCard.w2 && fiveCard.w2 == fiveCard.w3 &&
+      fiveCard.w3 == fiveCard.w4) p += 1
+    if (fiveCard.w2 == fiveCard.w3 && fiveCard.w3 == fiveCard.w4 &&
+      fiveCard.w4 == fiveCard.w5) p += 1
+    p == 1
+  }
+
+  def isStraightFlush(fiveCard: FiveCard): Boolean = {
+    var p = 0
+    if (isStraight(fiveCard)) p += 1
+    if (isFlush(fiveCard)) p += 1
+    p == 2
+  }
+
+  def isRoyalFlush(fiveCard: FiveCard): Boolean = {
+    isStraightFlush(fiveCard) && fiveCard.w4 == 13
   }
 }
