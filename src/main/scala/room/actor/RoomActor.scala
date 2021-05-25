@@ -129,7 +129,7 @@ final class RoomActor extends Actor {
       println(pl + " " + comb + " " + comb.weight)
     })
     println("---------------------------------------")
-
+    // add prize winner
   }
 
   private def getCombination(board: Board, pl: Player): Combination = {
@@ -172,7 +172,7 @@ final class RoomActor extends Actor {
 
   private def setHands(): Unit = {
     playersActive.foreach(pl => pl.setHand(Hand(pack.dequeue(), pack.dequeue())))
-    playersActive.foreach(pl => println(pl.getHand())) // log
+    playersActive.foreach(pl => println(pl + " " + pl.getHand())) // log
     prepareFlopRound()
   }
 
